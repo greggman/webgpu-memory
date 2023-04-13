@@ -54,6 +54,7 @@ The info returned is
     querySet: <count of querySets or undefined if none>
   },
 }
+```
 
 By default `getWebGPUMemoryUsage` returns info for all devices.
 You can get info for a single device by passing the device.
