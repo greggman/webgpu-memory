@@ -1,0 +1,41 @@
+{
+  "name": "webgpu-memory",
+  "version": "1.0.0",
+  "description": "Tracks WebGPU memory usage",
+  "main": "src/webgpu-memory.js",
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/greggman/webgpu-memory.git"
+  },
+  "keywords": [
+    "WebGPU"
+  ],
+  "files": [
+    "src/**/*"
+  ],
+  "author": "Gregg Tavares",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/greggman/webgpu-memory/issues"
+  },
+  "homepage": "https://github.com/greggman/webgpu-memory#readme",
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.1.0",
+    "@typescript-eslint/eslint-plugin": "^5.56.0",
+    "@typescript-eslint/parser": "^5.56.0",
+    "@typescript-eslint/typescript-estree": "^5.56.0",
+    "@webgpu/types": "^0.1.30",
+    "eslint": "^8.36.0",
+    "eslint-plugin-google-camelcase": "0.0.2",
+    "eslint-plugin-one-variable-per-var": "0.0.3",
+    "eslint-plugin-optional-comma-spacing": "0.0.4",
+    "eslint-plugin-require-trailing-comma": "0.0.1",
+    "rollup": "^3.2.5",
+    "typescript": "^4.9.4"
+  }
+}
