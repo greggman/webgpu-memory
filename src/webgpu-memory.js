@@ -9,11 +9,11 @@ const allWebGPUObjectsById = new Map();
 /**
  * Start tracking a resource by device
  * @param {GPUDevice} device
- * @param {GPUTexture | GPUBuffer} webgpuObject
+ * @param {GPUObjectBase} webgpuObject
  * @param {string} category
- * @param {number} size
+ * @param {number} [size]
  */
-function addDeviceMem(device, webgpuObject, category, size) {
+function addDeviceObject(device, webgpuObject, category, size) {
   const id = nextId++;
   webgpuObject[webgpuMemoryIdSymbol] = id;
   allWebGPUObjectsById.set(id, {
@@ -23,6 +23,17 @@ function addDeviceMem(device, webgpuObject, category, size) {
     category,
     size,
   });
+}
+
+/**
+ * Start tracking a resource by device
+ * @param {GPUDevice} device
+ * @param {GPUTexture | GPUBuffer} webgpuObject
+ * @param {string} category
+ * @param {number} size
+ */
+function addDeviceMem(device, webgpuObject, category, size) {
+  addDeviceObject(device, webgpuObject, category, size);
 }
 
 /**
@@ -47,7 +58,7 @@ function freeObjectById(id) {
  * @param {GPUTexture | GPUBuffer} webgpuObject
  * @param {string} category
  */
-function freeMem(webgpuObject, category) {
+function freeObject(webgpuObject, category) {
   const id = webgpuObject[webgpuMemoryIdSymbol];
   freeObjectById(id, category);
 }
@@ -84,9 +95,11 @@ export function getWebGPUMemoryUsage(device) {
       idsToDelete.push(id);
     } else {
       if (!requestedDeviceId || deviceId === requestedDeviceId) {
-        resources[category]++;
-        memory.total += size;
-        memory[category] += size;
+        resources[category] = (resources[category] || 0) + 1;
+        if (size) {
+          memory.total += size;
+          memory[category] += size;
+        }
       }
     }
   }
@@ -163,7 +176,7 @@ function addBuffer(device, buffer) {
  * @param {GPUBuffer} buffer
  */
 function removeBuffer(buffer) {
-  freeMem(buffer, 'buffer');
+  freeObject(buffer, 'buffer');
 }
 
 /**
@@ -181,7 +194,7 @@ function addTexture(device, texture) {
  * @param {GPUTexture} texture
  */
 function removeTexture(texture) {
-  freeMem(texture, 'texture');
+  freeObject(texture, 'texture');
 }
 
 function addDevice(adapter, device) {
@@ -195,11 +208,33 @@ function removeDevice(device) {
   deviceIdToDeviceWeakRef.delete(id);
 }
 
+function wrapCreationDestroy(factoryClass, objectClass, fnName, category) {
+  wrapFunction(factoryClass, fnName, function(device, object) {
+    addDeviceObject(device, object, category);
+  });
+  if (objectClass.prototype.destroy) {
+    wrapFunction(objectClass, 'destroy', function(object) {
+      freeObject(object, category);
+    });
+  }
+}
 /* TODO: remove these! */
 /* global GPUAdapter */
 /* global GPUBuffer */
 /* global GPUDevice */
 /* global GPUTexture */
+/* global GPUSampler */
+/* global GPUBindGroup */
+/* global GPUBindGroupLayout */
+/* global GPUPipelineLayout */
+/* global GPUShaderModule */
+/* global GPUComputePipeline */
+/* global GPURenderPipeline */
+/* global GPUComputePipeline */
+/* global GPURenderPipeline */
+///* global GPUCommandEncoder */
+///* global GPURenderBundleEncoder */
+/* global GPUQuerySet */
 
 wrapFunction(GPUAdapter, 'requestDevice', addDevice);
 wrapFunction(GPUDevice, 'destroy', removeDevice);
@@ -209,3 +244,17 @@ wrapFunction(GPUBuffer, 'destroy', removeBuffer);
 wrapFunction(GPUDevice, 'createTexture', addTexture);
 wrapFunction(GPUTexture, 'destroy', removeTexture);
 
+wrapCreationDestroy(GPUDevice, GPUSampler, 'createSampler', 'sampler');
+wrapCreationDestroy(GPUDevice, GPUBindGroup, 'createBindGroup', 'bindGroup');
+wrapCreationDestroy(GPUDevice, GPUBindGroupLayout, 'createBindGroupLayout', 'bindGroupLayout');
+wrapCreationDestroy(GPUDevice, GPUPipelineLayout, 'createPipelineLayout', 'pipelineLayout');
+wrapCreationDestroy(GPUDevice, GPUShaderModule, 'createShaderModule', 'shaderModule');
+wrapCreationDestroy(GPUDevice, GPUComputePipeline, 'createComputePipeline', 'computePipeline');
+wrapCreationDestroy(GPUDevice, GPURenderPipeline, 'createRenderPipeline', 'renderPipeline');
+wrapCreationDestroy(GPUDevice, GPUComputePipeline, 'createComputePipelineAsync', 'computePipeline');
+wrapCreationDestroy(GPUDevice, GPURenderPipeline, 'createRenderPipelineAsync', 'renderPipeline');
+//wrapCreationDestroy(GPUDevice, GPUCommandEncoder, 'createCommandEncoder', 'commandEncoder');
+//wrapCreationDestroy(GPUDevice, GPURenderBundleEncoder, 'createRenderBundleEncoder', 'renderBundleEncoder');
+wrapCreationDestroy(GPUDevice, GPUQuerySet, 'createQuerySet', 'querySet');
+// problem, no device for this
+// GPURenderBundleEncoder, 'finish'

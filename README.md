@@ -40,11 +40,20 @@ The info returned is
     total: <bytes used in total>
   },
   resources: {
-    buffer: <count of buffers>,
+    buffer: <count of buffers>
     texture: <count of textures>
-  }
+    sampler: <count of samplers or undefined if none>
+    bindGroup: <count of bindGroups or undefined if none>
+    bindGroupLayout: <count of bindGroupLayouts or undefined if none>
+    pipelineLayout: <count of pipelineLayouts or undefined if none>
+    shaderModule: <count of shaderModules or undefined if none>
+    computePipeline: <count of computePipelines or undefined if none>
+    renderPipeline: <count of renderPipelines or undefined if none>
+    computePipeline: <count of computePipelines or undefined if none>
+    renderPipeline: <count of renderPipelines or undefined if none>
+    querySet: <count of querySets or undefined if none>
+  },
 }
-```
 
 By default `getWebGPUMemoryUsage` returns info for all devices.
 You can get info for a single device by passing the device.
@@ -59,11 +68,40 @@ const deviceSpecificInfo = getWebGPUMemoryUsage(someDevice);
 1. You must have WebGPU error free code. 
 
    If your code is generating WebGPU errors you must fix those first
-   before using this library.
+   before using this library. That also means it doesn't handle out-of-memory
 
-2. It's not currently tracking canvas memory
+2. Most resources in WebGPU are garbage collected
+
+   Only `GPUDevice`, `GPUTexture`, `GPUBuffer`, and `GPUQuerySet` have
+   a `destroy` method. All other objects are garbage collected. That
+   means, it's unknown when they will actually be collected. So for example,
+   if you create 50 bind groups and then stop using them and lose all references
+   to them it's undefined how long they will continue to exist.
+
+   The point being, just because the number doesn't go down immediately
+   after you stop using the object, doesn't mean you have a bug.
+
+   One possible thing to try, at least in Chrome, you can pass the flag
+   `--js-flags="--expose-gc"` and then there should be a global function `gc`
+   so you could do
+
+   ```js
+   ...release references to objects...
+   gc(); 
+   const info = getWebGPUMemoryUsage();
+   ```
+
+   Still, the resource counts are useful info. If you're not expecting to
+   see them increase constantly and they are then you probably have an bug
+   that's not losing all references to them.
+
+3. It's not currently tracking canvas memory
 
    it's on the TODO list.
+
+4. Lost contexts are not handled
+
+   it's on the TODO list
 
 ## Example:
 
