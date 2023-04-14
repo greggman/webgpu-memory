@@ -96,9 +96,9 @@ const deviceSpecificInfo = getWebGPUMemoryUsage(someDevice);
    see them increase constantly and they are then you probably have an bug
    that's not losing all references to them.
 
-3. It's not currently tracking canvas memory
+3. It doesn't track render bundles
 
-   it's on the TODO list.
+   it's on the TODO list
 
 4. Lost contexts are not handled
 

@@ -92,7 +92,7 @@ module.exports = {
     'no-obj-calls': 2,
     'no-redeclare': [0],
     'no-shadow': [0],
-    //'no-undef': [2],
+    'no-undef': [2],
     'no-unreachable': 2,
     'one-variable-per-var/one-variable-per-var': [2],
     'quotes': [2, 'single'],
