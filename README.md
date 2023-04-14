@@ -37,11 +37,13 @@ The info returned is
   memory: {
     buffer: <bytes used by buffers>
     texture: <bytes used by textures>
+    canvas: <bytes used by canvases>
     total: <bytes used in total>
   },
   resources: {
     buffer: <count of buffers>
     texture: <count of textures>
+    canvas: <count of canvases or undefined if none>
     sampler: <count of samplers or undefined if none>
     bindGroup: <count of bindGroups or undefined if none>
     bindGroupLayout: <count of bindGroupLayouts or undefined if none>
