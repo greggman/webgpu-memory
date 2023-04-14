@@ -1,4 +1,4 @@
-/* webgpu-memory@1.1.0, license MIT */
+/* webgpu-memory@1.2.0, license MIT */
 /* eslint-disable no-sparse-arrays */
 
 /*
@@ -444,28 +444,30 @@ function wrapCreationDestroy(factoryClass, objectClass, fnName, category) {
 ///* global GPURenderBundleEncoder */
 /* global GPUQuerySet */
 
-wrapFunction(GPUAdapter, 'requestDevice', addDevice);
-wrapFunction(GPUDevice, 'destroy', removeDevice);
+if (typeof GPUAdapter !== 'undefined') {
+  wrapFunction(GPUAdapter, 'requestDevice', addDevice);
+  wrapFunction(GPUDevice, 'destroy', removeDevice);
 
-wrapFunction(GPUDevice, 'createBuffer', addBuffer);
-wrapFunction(GPUBuffer, 'destroy', removeBuffer);
-wrapFunction(GPUDevice, 'createTexture', addTexture);
-wrapFunction(GPUTexture, 'destroy', removeTexture);
+  wrapFunction(GPUDevice, 'createBuffer', addBuffer);
+  wrapFunction(GPUBuffer, 'destroy', removeBuffer);
+  wrapFunction(GPUDevice, 'createTexture', addTexture);
+  wrapFunction(GPUTexture, 'destroy', removeTexture);
 
-wrapCreationDestroy(GPUDevice, GPUSampler, 'createSampler', 'sampler');
-wrapCreationDestroy(GPUDevice, GPUBindGroup, 'createBindGroup', 'bindGroup');
-wrapCreationDestroy(GPUDevice, GPUBindGroupLayout, 'createBindGroupLayout', 'bindGroupLayout');
-wrapCreationDestroy(GPUDevice, GPUPipelineLayout, 'createPipelineLayout', 'pipelineLayout');
-wrapCreationDestroy(GPUDevice, GPUShaderModule, 'createShaderModule', 'shaderModule');
-wrapCreationDestroy(GPUDevice, GPUComputePipeline, 'createComputePipeline', 'computePipeline');
-wrapCreationDestroy(GPUDevice, GPURenderPipeline, 'createRenderPipeline', 'renderPipeline');
-wrapCreationDestroy(GPUDevice, GPUComputePipeline, 'createComputePipelineAsync', 'computePipeline');
-wrapCreationDestroy(GPUDevice, GPURenderPipeline, 'createRenderPipelineAsync', 'renderPipeline');
-//wrapCreationDestroy(GPUDevice, GPUCommandEncoder, 'createCommandEncoder', 'commandEncoder');
-//wrapCreationDestroy(GPUDevice, GPURenderBundleEncoder, 'createRenderBundleEncoder', 'renderBundleEncoder');
-wrapCreationDestroy(GPUDevice, GPUQuerySet, 'createQuerySet', 'querySet');
-// problem, no device for this
-// GPURenderBundleEncoder, 'finish'
+  wrapCreationDestroy(GPUDevice, GPUSampler, 'createSampler', 'sampler');
+  wrapCreationDestroy(GPUDevice, GPUBindGroup, 'createBindGroup', 'bindGroup');
+  wrapCreationDestroy(GPUDevice, GPUBindGroupLayout, 'createBindGroupLayout', 'bindGroupLayout');
+  wrapCreationDestroy(GPUDevice, GPUPipelineLayout, 'createPipelineLayout', 'pipelineLayout');
+  wrapCreationDestroy(GPUDevice, GPUShaderModule, 'createShaderModule', 'shaderModule');
+  wrapCreationDestroy(GPUDevice, GPUComputePipeline, 'createComputePipeline', 'computePipeline');
+  wrapCreationDestroy(GPUDevice, GPURenderPipeline, 'createRenderPipeline', 'renderPipeline');
+  wrapCreationDestroy(GPUDevice, GPUComputePipeline, 'createComputePipelineAsync', 'computePipeline');
+  wrapCreationDestroy(GPUDevice, GPURenderPipeline, 'createRenderPipelineAsync', 'renderPipeline');
+  //wrapCreationDestroy(GPUDevice, GPUCommandEncoder, 'createCommandEncoder', 'commandEncoder');
+  //wrapCreationDestroy(GPUDevice, GPURenderBundleEncoder, 'createRenderBundleEncoder', 'renderBundleEncoder');
+  wrapCreationDestroy(GPUDevice, GPUQuerySet, 'createQuerySet', 'querySet');
+  // problem, no device for this
+  // GPURenderBundleEncoder, 'finish'
+}
 
 export { getWebGPUMemoryUsage };
 //# sourceMappingURL=webgpu-memory.module.js.map
