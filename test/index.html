@@ -12,7 +12,9 @@
     </style>
   </head>
   <body>
-    <div id="mocha"></div>
+    <div id="mocha">
+    <div id="no-webgpu" style="color: red; display: none">WebGPU not supported by this browser. All test skipped</div>      
+    </div>
     <script>
       /* global window */
 
@@ -36,6 +38,10 @@
     /* global URLSearchParams */
     /* global window */
     import {setConfig} from './assert.js';
+
+    if (typeof GPUAdapter === 'undefined') {
+      document.querySelector('#no-webgpu').style.display = '';
+    }
 
     async function main() {
       mocha.setup('bdd');
