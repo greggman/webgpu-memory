@@ -1,4 +1,4 @@
-/* webgpu-memory@1.2.0, license MIT */
+/* webgpu-memory@1.3.0, license MIT */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -217,10 +217,27 @@
 
   const kTextureFormatInfo = kAllTextureFormatInfo;
 
+  /**
+   * 
+   * @callback ComputeMemSizeFn
+   * @param {any} arg
+   * @returns {number} The size in bytes
+   */
+
   const webgpuMemoryIdSymbol = Symbol('webgpu-memory-object-id');
   const deviceIdToDeviceWeakRef = new Map();
 
+  /**
+   * @typedef {Object} ObjectInfo
+   * @property {WeakRef} ref to object
+   * @property {number} id object's id (same as key)
+   * @property {number} deviceId object's device
+   * @property {string} category
+   * @property {number|ComputeMemSizeFn} [size]
+   */
+
   let nextId = 1;
+  /** @type {Map<number, ObjectInfo>} */
   const allWebGPUObjectsById = new Map();
 
   /**
@@ -228,11 +245,14 @@
    * @param {GPUDevice} device
    * @param {GPUObjectBase} webgpuObject
    * @param {string} category
-   * @param {number} [size]
+   * @param {number|ComputeMemSizeFn} [size]
    */
   function addDeviceObject(device, webgpuObject, category, size) {
-    const id = nextId++;
-    webgpuObject[webgpuMemoryIdSymbol] = id;
+    let id = webgpuObject[webgpuMemoryIdSymbol];
+    if (!id) {
+      id = nextId++;
+      webgpuObject[webgpuMemoryIdSymbol] = id;
+    }
     allWebGPUObjectsById.set(id, {
       ref: new WeakRef(webgpuObject),
       id,
@@ -247,7 +267,7 @@
    * @param {GPUDevice} device
    * @param {GPUTexture | GPUBuffer} webgpuObject
    * @param {string} category
-   * @param {number} size
+   * @property {number|ComputeMemSizeFn} size
    */
   function addDeviceMem(device, webgpuObject, category, size) {
     addDeviceObject(device, webgpuObject, category, size);
@@ -297,6 +317,7 @@
       total: 0,
       buffer: 0,
       texture: 0,
+      canvas: 0,
     };
     const resources = {
       buffer: 0,
@@ -308,14 +329,16 @@
 
     const idsToDelete = [];
     for (const [id, {ref, deviceId, category, size}] of allWebGPUObjectsById.entries()) {
-      if (!ref.deref() || !deviceExists(deviceId)) {
+      const webgpuObject = ref.deref();
+      if (!webgpuObject || !deviceExists(deviceId)) {
         idsToDelete.push(id);
       } else {
         if (!requestedDeviceId || deviceId === requestedDeviceId) {
           resources[category] = (resources[category] || 0) + 1;
           if (size) {
-            memory.total += size;
-            memory[category] += size;
+            const numBytes = typeof size === 'function' ? size(webgpuObject) : size;
+            memory.total += numBytes;
+            memory[category] += numBytes;
           }
         }
       }
@@ -422,6 +445,33 @@
     deviceIdToDeviceWeakRef.delete(id);
   }
 
+  // assuming there are, in general, 2 textures per canvas.
+  // The one being displayed and the one being rendered to
+  const kTexturesPerCanvas = 2;
+
+  function computeCanvasBytesUsed(context, format) {
+    const {width, height} = context.canvas;
+    return computeTextureMemorySize({
+      format,
+      width,
+      height,
+      depthOrArrayLayers: 1,
+      sampleCount: 1,
+      mipLevelCount: 1,
+      dimension: '2d',
+    }) * kTexturesPerCanvas;
+  }
+
+  function addContext(context, dummy, config) {
+    freeObject(context);
+    const format = config.format;
+    addDeviceMem(config.device, context, 'canvas', (context) => computeCanvasBytesUsed(context, format));
+  }
+
+  function removeContext(context) {
+    freeObject(context);
+  }
+
   function wrapCreationDestroy(factoryClass, objectClass, fnName, category) {
     wrapFunction(factoryClass, fnName, function(device, object) {
       addDeviceObject(device, object, category);
@@ -453,6 +503,9 @@
   if (typeof GPUAdapter !== 'undefined') {
     wrapFunction(GPUAdapter, 'requestDevice', addDevice);
     wrapFunction(GPUDevice, 'destroy', removeDevice);
+
+    wrapFunction(GPUCanvasContext, 'configure', addContext);
+    wrapFunction(GPUCanvasContext, 'unconfigure', removeContext);
 
     wrapFunction(GPUDevice, 'createBuffer', addBuffer);
     wrapFunction(GPUBuffer, 'destroy', removeBuffer);
