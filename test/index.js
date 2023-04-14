@@ -3,6 +3,7 @@
 /* global window */
 
 import './tests/buffer-tests.js';
+import './tests/canvas-tests.js';
 import './tests/device-tests.js';
 import './tests/texture-tests.js';
 
