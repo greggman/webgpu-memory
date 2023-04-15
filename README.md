@@ -44,6 +44,7 @@ The info returned is
   resources: {
     buffer: <count of buffers>
     texture: <count of textures>
+    devices: <count of devices or undefined if none>
     canvas: <count of canvases or undefined if none>
     sampler: <count of samplers or undefined if none>
     bindGroup: <count of bindGroups or undefined if none>
