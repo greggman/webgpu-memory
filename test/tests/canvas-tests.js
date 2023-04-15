@@ -96,6 +96,12 @@ describe('canvas tests', () => {
     const adapter2 = await navigator.gpu?.requestAdapter();
     const device2 = await adapter2?.requestDevice();
     if (!device1 || ! device2) {
+      if (device1) {
+        device1.destroy();
+      }
+      if (device2) {
+        device2.destroy();
+      }
       this.skip();
       return;
     }
@@ -141,6 +147,9 @@ describe('canvas tests', () => {
       assertEqual(info.memory.total, kInitialCanvasSize);
       assertEqual(info.memory.canvas, kInitialCanvasSize);
     }
+
+    device1.destroy()
+    device2.destroy();
 
   });
 
