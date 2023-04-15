@@ -1,4 +1,4 @@
-/* webgpu-memory@1.3.0, license MIT */
+/* webgpu-memory@1.4.0, license MIT */
 /* eslint-disable no-sparse-arrays */
 
 /*
@@ -429,14 +429,15 @@ function removeTexture(texture) {
 }
 
 function addDevice(adapter, device) {
-  const id = nextId++;
-  device[webgpuMemoryIdSymbol] = id;
+  addDeviceMem(device, device, 'device', 0);
+  const id = device[webgpuMemoryIdSymbol];
   deviceIdToDeviceWeakRef.set(id, new WeakRef(device));
 }
 
 function removeDevice(device) {
   const id = device[webgpuMemoryIdSymbol];
   deviceIdToDeviceWeakRef.delete(id);
+  freeObject(device);
 }
 
 // assuming there are, in general, 2 textures per canvas.
