@@ -1,5 +1,6 @@
 # WebGPU-Memory
 
+<img src="./webgpu-memory.png" style="max-width: 640px">
 
 This is a WebGPU-Memory tracker. You add the script to your page
 before you initialize WebGPU and then for a given context
