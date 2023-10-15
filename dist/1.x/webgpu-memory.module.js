@@ -1,4 +1,4 @@
-/* webgpu-memory@1.4.0, license MIT */
+/* webgpu-memory@1.4.1, license MIT */
 /* eslint-disable no-sparse-arrays */
 
 /*
@@ -356,17 +356,19 @@ function computeTextureMemorySize(texture) {
   } = kTextureFormatInfo[texture.format];
 
   let size = 0;
-  texture.width;
-  texture.height;
+  let width = texture.width;
+  let height = texture.height;
   texture.dimension === '3d' ? texture.depthOrArrayLayers : 1;
   const layers = texture.dimension === '3d' ? 1 : texture.depthOrArrayLayers;
 
   for (let level = 0; level < texture.mipLevelCount; ++level) {
-    const blocksAcross = Math.ceil(texture.width * texture.sampleCount / blockWidth);
-    const blocksDown = Math.ceil(texture.height * texture.sampleCount / blockHeight);
+    const blocksAcross = Math.ceil(width * texture.sampleCount / blockWidth);
+    const blocksDown = Math.ceil(height * texture.sampleCount / blockHeight);
     const numBlocks = blocksAcross * blocksDown;
     const bytesUsed = numBlocks * bytesPerBlock;
     size += bytesUsed;
+    width = Math.max(1, width / 2 | 0);
+    height = Math.max(1, height / 2 | 0);
   }
 
   size *= layers;
