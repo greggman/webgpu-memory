@@ -147,21 +147,18 @@ function computeTextureMemorySize(texture) {
   let size = 0;
   let width = texture.width;
   let height = texture.height;
-  let depth = texture.dimension === '3d' ? texture.depthOrArrayLayers : 1;
-  const layers = texture.dimension === '3d' ? 1 : texture.depthOrArrayLayers;
+  let depth = texture.depthOrArrayLayers;
 
   for (let level = 0; level < texture.mipLevelCount; ++level) {
     const blocksAcross = Math.ceil(width * texture.sampleCount / blockWidth);
     const blocksDown = Math.ceil(height * texture.sampleCount / blockHeight);
-    const numBlocks = blocksAcross * blocksDown;
+    const numBlocks = blocksAcross * blocksDown * depth;
     const bytesUsed = numBlocks * bytesPerBlock;
     size += bytesUsed;
     width = Math.max(1, width / 2 | 0);
     height = Math.max(1, height / 2 | 0);
-    depth = Math.max(1, depth / 2);
+    depth = texture.dimension === '3d' ? Math.max(1, depth / 2 | 0) : depth;
   }
-
-  size *= layers;
 
   return size;
 }

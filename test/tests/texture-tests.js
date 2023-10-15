@@ -6,8 +6,7 @@ function makeFormatInfo(textureInfo) {
   let byteSize = 0;
   let width = textureInfo.width;
   let height = textureInfo.height;
-  let depth = textureInfo.dimension === '3d' ? (textureInfo.depthOrArrayLayers || 1) : 1;
-  const layers = textureInfo.dimension === '3d' ? 1 : (textureInfo.depthOrArrayLayers || 1);
+  let depth = textureInfo.depthOrArrayLayers || 1;
   const {
     bytesPerBlock,
     blockWidth = 1,
@@ -18,15 +17,13 @@ function makeFormatInfo(textureInfo) {
   for (let level = 0; level < textureInfo.mipLevelCount; ++level) {
     const blocksAcross = Math.ceil(width * textureInfo.sampleCount / blockWidth);
     const blocksDown = Math.ceil(height * textureInfo.sampleCount / blockHeight);
-    const numBlocks = blocksAcross * blocksDown;
+    const numBlocks = blocksAcross * blocksDown * depth;
     const bytesUsed = numBlocks * bytesPerBlock;
     byteSize += bytesUsed;
     width = Math.max(1, width / 2 | 0);
     height = Math.max(1, height / 2 | 0);
-    depth = Math.max(1, depth / 2);
+    depth = textureInfo.dimension === '3d' ? Math.max(1, depth / 2 | 0) : depth;
   }
-
-  byteSize *= layers;
 
   return {
     ...textureInfo,
@@ -121,4 +118,55 @@ describe('texture tests', () => {
       device.destroy();
     });
   }
+
+  [
+    {
+      dimension: '2d',
+      memSize: 4 * 4 * 4 * 4 +
+               2 * 2 * 4 * 4 +
+               1 * 1 * 4 * 4,
+    },
+    {
+      dimension: '3d',
+      memSize: 4 * 4 * 4 * 4 +
+               2 * 2 * 2 * 4 +
+               1 * 1 * 1 * 4,
+    },
+  ].forEach(({dimension, memSize}) => {
+    it(`tracks dimension ${dimension} different then others`, async() => {
+      const adapter = await navigator.gpu?.requestAdapter();
+      const device = await adapter?.requestDevice();
+      if (!device) {
+        this.skip();
+        return;
+      }
+
+      {
+        const info = getWebGPUMemoryUsage();
+        assertEqual(info.memory.texture, 0);
+      }
+
+      const texture = device.createTexture({
+        dimension,
+        size: [4, 4, 4],
+        mipLevelCount: 3,
+        format: 'rgba8unorm',
+        usage: GPUTextureUsage.TEXTURE_BINDING,
+      });
+
+      {
+        const info = getWebGPUMemoryUsage();
+        assertEqual(info.memory.texture, memSize);
+      }
+
+      texture.destroy();
+
+      {
+        const info = getWebGPUMemoryUsage();
+        assertEqual(info.memory.texture, 0);
+      }
+
+      device.destroy();
+    });
+  });
 });
