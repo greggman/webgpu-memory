@@ -16,8 +16,8 @@ function makeFormatInfo(textureInfo) {
   const size = [width, height, textureInfo.depthOrArrayLayers || 1];
 
   for (let level = 0; level < textureInfo.mipLevelCount; ++level) {
-    const blocksAcross = Math.ceil(textureInfo.width * textureInfo.sampleCount / blockWidth);
-    const blocksDown = Math.ceil(textureInfo.height * textureInfo.sampleCount / blockHeight);
+    const blocksAcross = Math.ceil(width * textureInfo.sampleCount / blockWidth);
+    const blocksDown = Math.ceil(height * textureInfo.sampleCount / blockHeight);
     const numBlocks = blocksAcross * blocksDown;
     const bytesUsed = numBlocks * bytesPerBlock;
     byteSize += bytesUsed;
