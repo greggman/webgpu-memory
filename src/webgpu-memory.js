@@ -151,8 +151,8 @@ function computeTextureMemorySize(texture) {
   const layers = texture.dimension === '3d' ? 1 : texture.depthOrArrayLayers;
 
   for (let level = 0; level < texture.mipLevelCount; ++level) {
-    const blocksAcross = Math.ceil(texture.width * texture.sampleCount / blockWidth);
-    const blocksDown = Math.ceil(texture.height * texture.sampleCount / blockHeight);
+    const blocksAcross = Math.ceil(width * texture.sampleCount / blockWidth);
+    const blocksDown = Math.ceil(height * texture.sampleCount / blockHeight);
     const numBlocks = blocksAcross * blocksDown;
     const bytesUsed = numBlocks * bytesPerBlock;
     size += bytesUsed;
