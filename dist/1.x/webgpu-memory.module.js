@@ -1,4 +1,4 @@
-/* webgpu-memory@1.4.2, license MIT */
+/* webgpu-memory@1.4.3, license MIT */
 /* eslint-disable no-sparse-arrays */
 
 /*
@@ -311,11 +311,13 @@ function getWebGPUMemoryUsage(device) {
     total: 0,
     buffer: 0,
     texture: 0,
+    querySet: 0,
     canvas: 0,
   };
   const resources = {
     buffer: 0,
     texture: 0,
+    querySet: 0,
   };
   const info = { memory, resources };
 
@@ -428,6 +430,22 @@ function removeTexture(texture) {
   freeObject(texture);
 }
 
+/**
+ * @param {GPUDevice} device
+ * @param {GPUQuerySet} querySet
+ */
+function addQuerySet(device, querySet) {
+  const bytesUsed = querySet.count * 8;
+  addDeviceMem(device, querySet, 'querySet', bytesUsed);
+}
+
+/**
+ * @param {GPUQuerySet} querySet
+ */
+function removeQuerySet(querySet) {
+  freeObject(querySet);
+}
+
 function addDevice(adapter, device) {
   addDeviceMem(device, device, 'device', 0);
   const id = device[webgpuMemoryIdSymbol];
@@ -506,6 +524,8 @@ if (typeof GPUAdapter !== 'undefined') {
   wrapFunction(GPUBuffer, 'destroy', removeBuffer);
   wrapFunction(GPUDevice, 'createTexture', addTexture);
   wrapFunction(GPUTexture, 'destroy', removeTexture);
+  wrapFunction(GPUDevice, 'createQuerySet', addQuerySet);
+  wrapFunction(GPUQuerySet, 'destroy', removeQuerySet);
 
   wrapCreationDestroy(GPUDevice, GPUSampler, 'createSampler', 'sampler');
   wrapCreationDestroy(GPUDevice, GPUBindGroup, 'createBindGroup', 'bindGroup');
@@ -518,7 +538,6 @@ if (typeof GPUAdapter !== 'undefined') {
   wrapCreationDestroy(GPUDevice, GPURenderPipeline, 'createRenderPipelineAsync', 'renderPipeline');
   //wrapCreationDestroy(GPUDevice, GPUCommandEncoder, 'createCommandEncoder', 'commandEncoder');
   //wrapCreationDestroy(GPUDevice, GPURenderBundleEncoder, 'createRenderBundleEncoder', 'renderBundleEncoder');
-  wrapCreationDestroy(GPUDevice, GPUQuerySet, 'createQuerySet', 'querySet');
   // problem, no device for this
   // GPURenderBundleEncoder, 'finish'
 }
