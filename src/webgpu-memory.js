@@ -36,13 +36,24 @@ function addDeviceObject(device, webgpuObject, category, size) {
     id = nextId++;
     webgpuObject[webgpuMemoryIdSymbol] = id;
   }
+  const deviceId = device[webgpuMemoryIdSymbol];
   allWebGPUObjectsById.set(id, {
     ref: new WeakRef(webgpuObject),
     id,
-    deviceId: device[webgpuMemoryIdSymbol],
+    deviceId,
     category,
     size,
   });
+  if (!isNaN(size)) {
+    updateDeviceRunningTotal(device, size);
+  }
+}
+
+function updateDeviceRunningTotal(device, size) {
+  const deviceId = device[webgpuMemoryIdSymbol];
+  const deviceInfo = allWebGPUObjectsById.get(deviceId);
+  deviceInfo.runningTotal = (deviceInfo.runningTotal ?? 0) + size;
+  deviceInfo.maxTotal = Math.max(device.maxTotal ?? 0, deviceInfo.runningTotal);
 }
 
 /**
@@ -70,6 +81,14 @@ function deviceExists(deviceId) {
  * @param {number} id
  */
 function freeObjectById(id) {
+  const obj = allWebGPUObjectsById.get(id);
+  const size = obj?.size;
+  if (!isNaN(size)) {
+    const deviceInfo = allWebGPUObjectsById.get(obj.deviceId);
+    if (deviceInfo) {
+      deviceInfo.runningTotal = (deviceInfo.runningTotal ?? 0) - size;
+    }
+  }
   allWebGPUObjectsById.delete(id);
 }
 
@@ -102,6 +121,7 @@ export function getWebGPUMemoryUsage(device) {
     texture: 0,
     querySet: 0,
     canvas: 0,
+    maxTotal: 0,
   };
   const resources = {
     buffer: 0,
@@ -113,7 +133,7 @@ export function getWebGPUMemoryUsage(device) {
   const requestedDeviceId = device && device[webgpuMemoryIdSymbol];
 
   const idsToDelete = [];
-  for (const [id, {ref, deviceId, category, size}] of allWebGPUObjectsById.entries()) {
+  for (const [id, {ref, deviceId, category, size, maxTotal}] of allWebGPUObjectsById.entries()) {
     const webgpuObject = ref.deref();
     if (!webgpuObject || !deviceExists(deviceId)) {
       idsToDelete.push(id);
@@ -125,6 +145,9 @@ export function getWebGPUMemoryUsage(device) {
           memory.total += numBytes;
           memory[category] += numBytes;
         }
+        if (category === 'device') {
+          memory.maxTotal += maxTotal;
+        }
       }
     }
   }
@@ -132,6 +155,27 @@ export function getWebGPUMemoryUsage(device) {
   idsToDelete.forEach(freeObjectById);
 
   return info;
+}
+
+export function resetMaxTotal(device) {
+  const devices = device ? [device] : [];
+  if (!device) {
+    for (const [id, {ref, category}] of allWebGPUObjectsById.entries()) {
+      if (category === 'device') {
+        const webgpuObject = ref.deref();
+        devices.push(webgpuObject);
+      }
+    }
+  }
+
+  for (const device of devices) {
+    const info = getWebGPUMemoryUsage(device);
+    const deviceId = device[webgpuMemoryIdSymbol];
+    const deviceInfo = allWebGPUObjectsById.get(deviceId);
+    if (deviceInfo) {
+      deviceInfo.maxTotal = info.memory.total;
+    }
+  }
 }
 
 /**

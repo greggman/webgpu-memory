@@ -38,13 +38,17 @@ describe('texture tests', () => {
   const width = 32;
   const height = 16;
   const formats = [
-    makeFormatInfo({ format: 'rgba8unorm', bytesPerBlock: 4, dimension: '2d', mipLevelCount: 1, sampleCount: 1, width, height, memSize: width * height * 4, }),
-    makeFormatInfo({ format: 'rgba8unorm', bytesPerBlock: 4, dimension: '2d', mipLevelCount: 5, sampleCount: 1, width, height, memSize: width * height * 4, }),
-    makeFormatInfo({ format: 'rgba8unorm', bytesPerBlock: 4, dimension: '2d', mipLevelCount: 1, sampleCount: 4, width, height, memSize: width * height * 4, }),
-    makeFormatInfo({ format: 'rgba8unorm', bytesPerBlock: 4, dimension: '2d', mipLevelCount: 1, sampleCount: 1, width, height, depthOrArrayLayers: 10, memSize: width * height * 4, }),
-    makeFormatInfo({ format: 'rgba8unorm', bytesPerBlock: 4, dimension: '3d', mipLevelCount: 1, sampleCount: 1, width, height, depthOrArrayLayers: 10, memSize: width * height * 4, }),
-    makeFormatInfo({ format: 'rgba32float', bytesPerBlock: 16, dimension: '2d', mipLevelCount: 1, sampleCount: 1, width, height, memSize: width * height * 4, }),
-    makeFormatInfo({ format: 'rgba32float', bytesPerBlock: 16, dimension: '2d', mipLevelCount: 1, sampleCount: 1, width, height, memSize: width * height * 4, }),
+    makeFormatInfo({ format: 'rgba8unorm', bytesPerBlock: 4, dimension: '2d', mipLevelCount: 1, sampleCount: 1, width, height }),
+    makeFormatInfo({ format: 'rgba8unorm', bytesPerBlock: 4, dimension: '2d', mipLevelCount: 5, sampleCount: 1, width, height }),
+    makeFormatInfo({ format: 'rgba8unorm', bytesPerBlock: 4, dimension: '2d', mipLevelCount: 1, sampleCount: 4, width, height }),
+    makeFormatInfo({ format: 'rgba8unorm', bytesPerBlock: 4, dimension: '2d', mipLevelCount: 1, sampleCount: 1, width, height, depthOrArrayLayers: 10 }),
+    makeFormatInfo({ format: 'rgba8unorm', bytesPerBlock: 4, dimension: '3d', mipLevelCount: 1, sampleCount: 1, width, height, depthOrArrayLayers: 10 }),
+    makeFormatInfo({ format: 'rgba32float', bytesPerBlock: 16, dimension: '2d', mipLevelCount: 1, sampleCount: 1, width, height }),
+    makeFormatInfo({ format: 'depth16unorm', bytesPerBlock: 2, dimension: '2d', mipLevelCount: 1, sampleCount: 1, width, height }),
+    makeFormatInfo({ format: 'depth24plus', bytesPerBlock: 4, dimension: '2d', mipLevelCount: 1, sampleCount: 1, width, height }),
+    makeFormatInfo({ format: 'depth24plus-stencil8', bytesPerBlock: 4, dimension: '2d', mipLevelCount: 1, sampleCount: 1, width, height }),
+    makeFormatInfo({ format: 'depth32float', bytesPerBlock: 4, dimension: '2d', mipLevelCount: 1, sampleCount: 1, width, height }),
+    makeFormatInfo({ format: 'depth32float-stencil8', bytesPerBlock: 5, dimension: '2d', mipLevelCount: 1, sampleCount: 1, width, height, feature: 'depth32float-stencil8' }),
   ];
 
   for (const {
@@ -52,17 +56,22 @@ describe('texture tests', () => {
     dimension,
     mipLevelCount,
     sampleCount,
-    memSize,
     size,
+    feature,
+    memSize,
   } of formats) {
     it(
         `tracks textures of format: ${format}, dimension: ${dimension}, sampleCount: ${sampleCount}, mips: ${mipLevelCount}, size: ${size.join('×')}`,
         async function() {
       const adapter = await navigator.gpu?.requestAdapter();
-      const device = await adapter?.requestDevice();
+      const device = await adapter?.requestDevice({ requiredFeatures: adapter.features });
       if (!device) {
         this.skip();
         return;
+      }
+
+      if (feature && !device.features.has(feature)) {
+        this.skip(`missing feature: ${feature}`);
       }
 
       const usage = GPUTextureUsage.TEXTURE_BINDING |
@@ -133,7 +142,7 @@ describe('texture tests', () => {
                1 * 1 * 1 * 4,
     },
   ].forEach(({dimension, memSize}) => {
-    it(`tracks dimension ${dimension} different then others`, async() => {
+    it(`tracks dimension ${dimension} different than others`, async() => {
       const adapter = await navigator.gpu?.requestAdapter();
       const device = await adapter?.requestDevice();
       if (!device) {

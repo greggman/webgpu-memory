@@ -14,7 +14,7 @@ a reasonable approximation.
 ## Usage
 
 ```html
-<script src="https://greggman.github.io/webgpu-memory/webgpu-memory.js" crossorigin></script>
+<script src="https://greggman.github.io/webgpu-memory/dist/1.x/webgpu-memory.js" crossorigin></script>
 <script>
   const {getWebGPUMemoryUsage} = webgpuMemory;
 ```
@@ -22,7 +22,7 @@ a reasonable approximation.
 or 
 
 ```js
-import {getWebGPUMemoryUsage} from 'https://greggman.github.io/webgpu-memory/webgpu-memory.js';
+import {getWebGPUMemoryUsage} from 'https://greggman.github.io/webgpu-memory/dist/1.x/webgpu-memory.module.js';
 ```
 
 Then in your code
@@ -36,26 +36,27 @@ The info returned is
 ```js
 {
   memory: {
-    buffer: <bytes used by buffers>
-    texture: <bytes used by textures>
-    canvas: <bytes used by canvases>
-    total: <bytes used in total>
+    buffer: // bytes used by buffers
+    texture: // bytes used by textures
+    canvas: // bytes used by canvases
+    total: // bytes used in total
+    maxTotal: // highest total ever got
   },
   resources: {
-    buffer: <count of buffers>
-    texture: <count of textures>
-    devices: <count of devices or undefined if none>
-    canvas: <count of canvases or undefined if none>
-    sampler: <count of samplers or undefined if none>
-    bindGroup: <count of bindGroups or undefined if none>
-    bindGroupLayout: <count of bindGroupLayouts or undefined if none>
-    pipelineLayout: <count of pipelineLayouts or undefined if none>
-    shaderModule: <count of shaderModules or undefined if none>
-    computePipeline: <count of computePipelines or undefined if none>
-    renderPipeline: <count of renderPipelines or undefined if none>
-    computePipeline: <count of computePipelines or undefined if none>
-    renderPipeline: <count of renderPipelines or undefined if none>
-    querySet: <count of querySets or undefined if none>
+    buffer: // count of buffers
+    texture: // count of textures
+    devices: // count of devices or undefined if none
+    canvas: // count of canvases or undefined if none
+    sampler: // count of samplers or undefined if none
+    bindGroup: // count of bindGroups or undefined if none
+    bindGroupLayout: // count of bindGroupLayouts or undefined if none
+    pipelineLayout: // count of pipelineLayouts or undefined if none
+    shaderModule: // count of shaderModules or undefined if none
+    computePipeline: // count of computePipelines or undefined if none
+    renderPipeline: // count of renderPipelines or undefined if none
+    computePipeline: // count of computePipelines or undefined if none
+    renderPipeline: // count of renderPipelines or undefined if none
+    querySet: // count of querySets or undefined if none
   },
 }
 ```
@@ -107,6 +108,39 @@ const deviceSpecificInfo = getWebGPUMemoryUsage(someDevice);
 4. Lost contexts are not handled
 
    it's on the TODO list
+
+## `resetMaxTotal`
+
+You can import `resetMaxTotal` to reset the total.
+Pass in a device to reset just one device or pass in no device
+to reset all devices.
+
+Example:
+
+```js
+import { getWebGPUMemoryUsage, resetMaxTotal } from 'https://greggman.github.io/webgpu-memory/dist/1.x/webgpu-memory.module.js'
+
+const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+const b1 = device.createBuffer({size: 128, usage: GPBufferUsage.COPY_DST});
+const b2 = device.createBuffer({size: 128, usage: GPBufferUsage.COPY_DST});
+b2.destroy();
+
+// shows
+//   memory: {
+//     total: 128,
+//     maxTotal: 256,
+//   }
+console.log(JSON.stringify(getWebGPUMemoryUsage(), null, 2));
+
+resetMaxTotal();
+
+// shows
+//   memory: {
+//     total: 128,
+//     maxTotal: 128,
+//   }
+console.log(JSON.stringify(getWebGPUMemoryUsage(), null, 2));
+```
 
 ## Example:
 
