@@ -5,7 +5,8 @@ import {getWebGPUMemoryUsage} from '../../src/webgpu-memory.js';
 describe('canvas tests', () => {
 
   const kInitialCanvasSize = 300 * 150 * 4 * 2;
-  const kNewCanvasSize = 400 * 150 * 4 * 2;
+  const kNewCanvasSize1 = 500 * 150 * 4 * 2;
+  const kNewCanvasSize2 = 400 * 150 * 4 * 2;
 
   async function testCanvas(canvas1, canvas2) {
     const adapter = await navigator.gpu?.requestAdapter();
@@ -31,6 +32,7 @@ describe('canvas tests', () => {
       const info = getWebGPUMemoryUsage();
       assertEqual(info.resources.canvas, 1);
       assertEqual(info.memory.total, kInitialCanvasSize);
+      assertEqual(info.memory.maxTotal, kInitialCanvasSize);
       assertEqual(info.memory.canvas, kInitialCanvasSize);
     }
 
@@ -45,16 +47,31 @@ describe('canvas tests', () => {
       const info = getWebGPUMemoryUsage();
       assertEqual(info.resources.canvas, 2);
       assertEqual(info.memory.total, kInitialCanvasSize * 2);
+      assertEqual(info.memory.maxTotal, kInitialCanvasSize * 2);
       assertEqual(info.memory.canvas, kInitialCanvasSize * 2);
     }
 
-    canvas1.width = 400;
+    canvas1.width = 500;
+    context1.getCurrentTexture();
 
     {
       const info = getWebGPUMemoryUsage();
       assertEqual(info.resources.canvas, 2);
-      assertEqual(info.memory.total, kNewCanvasSize + kInitialCanvasSize);
-      assertEqual(info.memory.canvas, kNewCanvasSize + kInitialCanvasSize);
+      assertEqual(info.memory.total, kNewCanvasSize1 + kInitialCanvasSize);
+      assertEqual(info.memory.maxTotal, kNewCanvasSize1 + kInitialCanvasSize);
+      assertEqual(info.memory.canvas, kNewCanvasSize1 + kInitialCanvasSize);
+    }
+
+    // smaller than before. maxTotal should stay large
+    canvas1.width = 400;
+    context1.getCurrentTexture();
+
+    {
+      const info = getWebGPUMemoryUsage();
+      assertEqual(info.resources.canvas, 2);
+      assertEqual(info.memory.total, kNewCanvasSize2 + kInitialCanvasSize);
+      assertEqual(info.memory.maxTotal, kNewCanvasSize1 + kInitialCanvasSize);
+      assertEqual(info.memory.canvas, kNewCanvasSize2 + kInitialCanvasSize);
     }
 
     context1.unconfigure();
@@ -63,6 +80,7 @@ describe('canvas tests', () => {
       const info = getWebGPUMemoryUsage();
       assertEqual(info.resources.canvas, 1);
       assertEqual(info.memory.total, kInitialCanvasSize);
+      assertEqual(info.memory.maxTotal, kNewCanvasSize1 + kInitialCanvasSize);
       assertEqual(info.memory.canvas, kInitialCanvasSize);
     }
 
@@ -72,6 +90,7 @@ describe('canvas tests', () => {
       const info = getWebGPUMemoryUsage();
       assertFalsy(info.resources.canvas);
       assertEqual(info.memory.total, 0);
+      assertEqual(info.memory.maxTotal, kNewCanvasSize1 + kInitialCanvasSize);
       assertEqual(info.memory.canvas, 0);
     }
 
