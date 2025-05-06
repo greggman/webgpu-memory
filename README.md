@@ -11,6 +11,9 @@ internal requirements. For example a GPU might
 have alignment requirements. Still, this is likely to give
 a reasonable approximation.
 
+**You can use this without manually adding to your page
+via the [webgpu-dev-extension](https://github.com/greggman/webgpu-dev-extension).**
+
 ## Usage
 
 ```html
