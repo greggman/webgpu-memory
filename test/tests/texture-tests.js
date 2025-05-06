@@ -1,6 +1,6 @@
 import {assertEqual} from '../assert.js';
 import {describe, it} from '../mocha-support.js';
-import {getWebGPUMemoryUsage} from '../../src/webgpu-memory.js';
+import {getWebGPUMemoryUsage, resetMaxTotal} from '../../src/webgpu-memory.js';
 
 function makeFormatInfo(textureInfo) {
   let byteSize = 0;
@@ -34,6 +34,10 @@ function makeFormatInfo(textureInfo) {
 
 
 describe('texture tests', () => {
+
+  beforeEach(() => {
+    resetMaxTotal();
+  });
 
   const width = 32;
   const height = 16;

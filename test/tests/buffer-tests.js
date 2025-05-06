@@ -1,8 +1,12 @@
 import {assertEqual} from '../assert.js';
 import {describe, it} from '../mocha-support.js';
-import {getWebGPUMemoryUsage} from '../../src/webgpu-memory.js';
+import {getWebGPUMemoryUsage, resetMaxTotal} from '../../src/webgpu-memory.js';
 
 describe('buffer tests', () => {
+
+  beforeEach(() => {
+    resetMaxTotal();
+  });
 
   it('tracks buffers', async function() {
     const adapter = await navigator.gpu?.requestAdapter();

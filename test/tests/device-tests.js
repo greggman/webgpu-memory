@@ -4,6 +4,10 @@ import {getWebGPUMemoryUsage, resetMaxTotal} from '../../src/webgpu-memory.js';
 
 describe('device tests', () => {
 
+  beforeEach(() => {
+    resetMaxTotal();
+  });
+
   it('tracks devices separately', async function() {
     const adapter1 = await navigator.gpu?.requestAdapter();
 
@@ -150,16 +154,16 @@ describe('device tests', () => {
 
     {
       const info = getWebGPUMemoryUsage();
+      assertEqual(info.memory.maxTotal, 256 + 128);
       assertEqual(info.resources.device, 1);
     }
 
     device2.destroy();
 
-
     {
       const info = getWebGPUMemoryUsage();
       assertFalsy(info.resources.device);
-      assertEqual(info.memory.maxTotal, 0);
+      assertEqual(info.memory.maxTotal, 256 + 128);
     }
   });
 
@@ -255,7 +259,7 @@ describe('device tests', () => {
     {
       const info = getWebGPUMemoryUsage();
       assertEqual(info.memory.buffer, 256);
-      assertEqual(info.memory.maxTotal, 256);
+      assertEqual(info.memory.maxTotal, 128 + 256);
     }
 
     {
@@ -276,7 +280,7 @@ describe('device tests', () => {
     {
       const info = getWebGPUMemoryUsage();
       assertEqual(info.memory.buffer, 0);
-      assertEqual(info.memory.maxTotal, 0);
+      assertEqual(info.memory.maxTotal, 128 + 256);
     }
 
     {

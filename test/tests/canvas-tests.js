@@ -1,12 +1,16 @@
 import {assertEqual, assertFalsy} from '../assert.js';
 import {describe, it} from '../mocha-support.js';
-import {getWebGPUMemoryUsage} from '../../src/webgpu-memory.js';
+import {getWebGPUMemoryUsage, resetMaxTotal} from '../../src/webgpu-memory.js';
 
 describe('canvas tests', () => {
 
   const kInitialCanvasSize = 300 * 150 * 4 * 2;
   const kNewCanvasSize1 = 500 * 150 * 4 * 2;
   const kNewCanvasSize2 = 400 * 150 * 4 * 2;
+
+  beforeEach(() => {
+    resetMaxTotal();
+  });
 
   async function testCanvas(canvas1, canvas2) {
     const adapter = await navigator.gpu?.requestAdapter();

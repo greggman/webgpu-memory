@@ -22,6 +22,8 @@ const deviceIdToDeviceWeakRef = new Map();
 let nextId = 1;
 /** @type {Map<number, ObjectInfo>} */
 const allWebGPUObjectsById = new Map();
+let globalRunningTotal = 0;
+let globalMaxTotal = 0;
 
 /**
  * Start tracking a resource by device
@@ -51,15 +53,16 @@ function addDeviceObject(device, webgpuObject, category, size) {
     info.oldSize = size;
   }
   if (!isNaN(size)) {
-    updateDeviceRunningTotal(device, size);
+    const deviceInfo = allWebGPUObjectsById.get(deviceId);
+    updateDeviceInfoRunningTotal(deviceInfo, size);
   }
 }
 
-function updateDeviceRunningTotal(device, size) {
-  const deviceId = device[webgpuMemoryIdSymbol];
-  const deviceInfo = allWebGPUObjectsById.get(deviceId);
+function updateDeviceInfoRunningTotal(deviceInfo, size) {
   deviceInfo.runningTotal = (deviceInfo.runningTotal ?? 0) + size;
   deviceInfo.maxTotal = Math.max(deviceInfo.maxTotal ?? 0, deviceInfo.runningTotal);
+  globalRunningTotal = globalRunningTotal + size;
+  globalMaxTotal = Math.max(globalMaxTotal, globalRunningTotal);
 }
 
 /**
@@ -95,7 +98,7 @@ function freeObjectById(id, webgpuObject) {
   if (!isNaN(size)) {
     const deviceInfo = allWebGPUObjectsById.get(obj.deviceId);
     if (deviceInfo) {
-      deviceInfo.runningTotal = (deviceInfo.runningTotal ?? 0) - size;
+      updateDeviceInfoRunningTotal(deviceInfo, -size);
     }
   }
   allWebGPUObjectsById.delete(id);
@@ -161,6 +164,10 @@ export function getWebGPUMemoryUsage(device) {
     }
   }
 
+  if (!device) {
+    memory.maxTotal = globalMaxTotal;
+  }
+
   idsToDelete.forEach(id => freeObjectById(id));
 
   return info;
@@ -168,6 +175,7 @@ export function getWebGPUMemoryUsage(device) {
 
 export function resetMaxTotal(device) {
   const devices = device ? [device] : [];
+  let newGlobalMaxTotal = 0;
   if (!device) {
     for (const [id, {ref, category}] of allWebGPUObjectsById.entries()) {
       if (category === 'device') {
@@ -182,8 +190,15 @@ export function resetMaxTotal(device) {
     const deviceId = device[webgpuMemoryIdSymbol];
     const deviceInfo = allWebGPUObjectsById.get(deviceId);
     if (deviceInfo) {
-      deviceInfo.maxTotal = info.memory.total;
+      const { total } = info.memory;
+      deviceInfo.maxTotal = total;
+      newGlobalMaxTotal += total;
     }
+  }
+
+  if (!device) {
+    globalRunningTotal = newGlobalMaxTotal;
+    globalMaxTotal = newGlobalMaxTotal;
   }
 }
 
@@ -331,11 +346,10 @@ function resizeContext(context) {
   const id = context[webgpuMemoryIdSymbol];
   const info = allWebGPUObjectsById.get(id);
   const deviceInfo = allWebGPUObjectsById.get(info.deviceId);
-  deviceInfo.runningTotal -= info.oldSize;
+  updateDeviceInfoRunningTotal(deviceInfo, -info.oldSize);
   const size = info.size(context);
-  deviceInfo.runningTotal += size;
   info.oldSize = size;
-  deviceInfo.maxTotal = Math.max(deviceInfo.maxTotal, deviceInfo.runningTotal);
+  updateDeviceInfoRunningTotal(deviceInfo, size);
 }
 
 function wrapCreationDestroy(factoryClass, objectClass, fnName, category) {
