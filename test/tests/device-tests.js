@@ -331,4 +331,51 @@ describe('device tests', () => {
 
   });
 
+  it('tracks maxTotal - regression test 01', async () => {
+    // bug where maxTotal is reset on allocation
+    const adapter = await navigator.gpu?.requestAdapter();
+    if (!adapter) {
+      this.skip();
+      return;
+    }
+
+    const device = await adapter?.requestDevice();
+    if (!device) {
+      this.skip();
+      return;
+    }
+
+    const buffer1 = device.createBuffer({
+      size: 128,
+      usage: GPUBufferUsage.COPY_DST,
+    });
+    const buffer2 = device.createBuffer({
+      size: 256,
+      usage: GPUBufferUsage.COPY_DST,
+    });
+    buffer2.destroy();
+    const buffer3 = device.createBuffer({
+      size: 128,
+      usage: GPUBufferUsage.COPY_DST,
+    });
+
+    {
+      const info = getWebGPUMemoryUsage();
+      assertEqual(info.memory.buffer, 128 + 128);
+      assertEqual(info.memory.maxTotal, 128 + 256);
+    }
+
+    buffer1.destroy();
+    buffer3.destroy();
+
+    {
+      const info = getWebGPUMemoryUsage();
+      assertEqual(info.memory.buffer, 0);
+      assertEqual(info.memory.maxTotal, 128 + 256);
+    }
+
+    device.destroy();
+
+  });
+
 });
