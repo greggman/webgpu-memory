@@ -1,6 +1,6 @@
 {
   "name": "webgpu-memory",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "Tracks WebGPU memory usage",
   "main": "dist/1.x/webgpu-memory.module.js",
   "type": "module",
