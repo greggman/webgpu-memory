@@ -35,22 +35,9 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-function makeTable(members, defaults, table) {
-  const result = {};
-  for (const [k, v] of Object.entries(table)) {
-    const item = {};
-    for (let i = 0; i < members.length; ++i) {
-      item[members[i]] = v[i] ?? defaults[i];
-    }
-    result[k] = item;
-  }
-  return result;
+function keysOf<T extends string>(obj: { [k in T]?: unknown }): readonly T[] {
+  return Object.keys(obj) as unknown[] as T[];
 }
-
-function keysOf(o) {
-  return [...Object.keys(o)];
-}
-
 
 /**
  * Defaults applied to all texture format tables automatically. Used only inside
@@ -99,16 +86,28 @@ const kFormatUniversalDefaults = {
  * `{ ... kUniversalDefaults, ...defaults, ...row }`.
  * This only operates at the first level; it doesn't support defaults in nested objects.
  */
-function formatTableWithDefaults({
+function formatTableWithDefaults<Defaults extends {}, Table extends { readonly [K: string]: {} }>({
   defaults,
   table,
-}) {
+}: {
+  defaults: Defaults;
+  table: Table;
+}): {
+  readonly [F in keyof Table]: {
+    readonly [K in keyof typeof kFormatUniversalDefaults]: K extends keyof Table[F]
+      ? Table[F][K]
+      : K extends keyof Defaults
+      ? Defaults[K]
+      : (typeof kFormatUniversalDefaults)[K];
+  };
+} {
   return Object.fromEntries(
     Object.entries(table).map(([k, row]) => [
       k,
       { ...kFormatUniversalDefaults, ...defaults, ...row },
     ])
-  )
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  ) as any;
 }
 
 /** "plain color formats", plus rgb9e5ufloat. */
@@ -1544,11 +1543,6 @@ export const kTextureFormatInfo = {
   ...kASTCTextureFormatInfo,
 };
 
-
-// CompressedTextureFormat are unrenderable so filter from RegularTextureFormats for color targets is enough
-export const kRenderableColorTextureFormats = kRegularTextureFormats.filter(
-  v => kColorTextureFormatInfo[v].renderable
-);
 
 // The formats of GPUTextureFormat for canvas context.
 export const kCanvasTextureFormats = ['bgra8unorm', 'rgba8unorm', 'rgba16float'];

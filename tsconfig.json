@@ -6,8 +6,10 @@
       "dom.iterable",
       "esnext"
     ],
+    "outDir": "./dist/1.x",
     "allowJs": true,
     "skipLibCheck": true,
+    "declaration": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,

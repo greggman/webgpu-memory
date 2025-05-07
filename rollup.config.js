@@ -1,3 +1,4 @@
+import typescript from '@rollup/plugin-typescript';
 import terser from '@rollup/plugin-terser';
 import fs from 'fs';
 
@@ -6,11 +7,12 @@ const banner = `/* webgpu-memory@${pkg.version}, license MIT */`;
 const version = `${pkg.version.split('.')[0]}.x`;
 
 const plugins = [
+    typescript({ tsconfig: './tsconfig.json' }),
 ];
 
 export default [
     {
-        input: 'src/webgpu-memory.js',
+        input: 'src/webgpu-memory.ts',
         output: [
             {
                 file: `dist/${version}/webgpu-memory.module.js`,
@@ -22,7 +24,7 @@ export default [
         plugins,
     },
     {
-        input: 'src/webgpu-memory.js',
+        input: 'src/webgpu-memory.ts',
         output: [
             {
                 name: 'webgpuMemory',
@@ -35,7 +37,7 @@ export default [
         plugins,
     },
     {
-        input: 'src/webgpu-memory.js',
+        input: 'src/webgpu-memory.ts',
         output: [
             {
                 name: 'webgpuMemory',

@@ -1,64 +1,90 @@
 import { kTextureFormatInfo } from './capabilities-info.js';
 
-/**
- * 
- * @callback ComputeMemSizeFn
- * @param {any} arg
- * @returns {number} The size in bytes
- */
+type ComputeMemSizeFn =  (...args: any[]) => number;;
 
 const webgpuMemoryIdSymbol = Symbol('webgpu-memory-object-id');
-const deviceIdToDeviceWeakRef = new Map();
+const deviceIdToDeviceWeakRef = new Map<number, WeakRef<GPUDevice>>();
 
-/**
- * @typedef {Object} ObjectInfo
- * @property {WeakRef} ref to object
- * @property {number} id object's id (same as key)
- * @property {number} deviceId object's device
- * @property {string} category
- * @property {number|ComputeMemSizeFn} [size]
- */
+declare global {
+  interface GPUObjectBase {
+     [webgpuMemoryIdSymbol]: number;
+  }
+  interface GPUCanvasContext {
+     [webgpuMemoryIdSymbol]: number;
+  }
+}
+
+type Category = 
+  | 'buffer'
+  | 'bindGroup'
+  | 'bindGroupLayout'
+  | 'canvas'
+  | 'computePipeline'
+  | 'device'
+  | 'pipelineLayout'
+  | 'querySet'
+  | 'renderPipeline'
+  | 'sampler'
+  | 'shaderModule'
+  | 'texture'
+  ;
+
+type WebGPUObject = GPUObjectBase | GPUCanvasContext;
+type WebGPUObjectInfo = {
+  ref: WeakRef<WebGPUObject>,
+  id: number,
+  deviceId: number,
+  category: Category,
+  size: number | ComputeMemSizeFn,
+};
+
+type DeviceInfo = WebGPUObjectInfo & {
+  maxTotal: number,
+  runningTotal: number,
+};
+
+type CanvasInfo = WebGPUObjectInfo & {
+  oldSize: number,
+}
 
 let nextId = 1;
-/** @type {Map<number, ObjectInfo>} */
-const allWebGPUObjectsById = new Map();
+const allWebGPUObjectsById = new Map<number, WebGPUObjectInfo | DeviceInfo | CanvasInfo>();
 let globalRunningTotal = 0;
 let globalMaxTotal = 0;
 
 /**
  * Start tracking a resource by device
- * @param {GPUDevice} device
- * @param {GPUObjectBase} webgpuObject
- * @param {string} category
- * @param {number|ComputeMemSizeFn} [size]
  */
-function addDeviceObject(device, webgpuObject, category, size) {
+function addDeviceObject(
+  device: GPUDevice,
+  webgpuObject: WebGPUObject,
+  category: Category,
+  size: number | ComputeMemSizeFn) {
   let id = webgpuObject[webgpuMemoryIdSymbol];
   if (!id) {
     id = nextId++;
     webgpuObject[webgpuMemoryIdSymbol] = id;
   }
   const deviceId = device[webgpuMemoryIdSymbol];
-  const info = {
+  const info: WebGPUObjectInfo = {
     ref: new WeakRef(webgpuObject),
     id,
     deviceId,
     category,
     size,
-    // will contain "oldSize" if canvas
   };
   allWebGPUObjectsById.set(id, info);
   if (typeof size === 'function') {
     size = size(webgpuObject);
-    info.oldSize = size;
+    (info as CanvasInfo).oldSize = size;
   }
   if (!isNaN(size)) {
-    const deviceInfo = allWebGPUObjectsById.get(deviceId);
+    const deviceInfo = allWebGPUObjectsById.get(deviceId) as DeviceInfo;
     updateDeviceInfoRunningTotal(deviceInfo, size);
   }
 }
 
-function updateDeviceInfoRunningTotal(deviceInfo, size) {
+function updateDeviceInfoRunningTotal(deviceInfo: DeviceInfo, size: number) {
   deviceInfo.runningTotal = (deviceInfo.runningTotal ?? 0) + size;
   deviceInfo.maxTotal = Math.max(deviceInfo.maxTotal ?? 0, deviceInfo.runningTotal);
   globalRunningTotal = globalRunningTotal + size;
@@ -67,36 +93,33 @@ function updateDeviceInfoRunningTotal(deviceInfo, size) {
 
 /**
  * Start tracking a resource by device
- * @param {GPUDevice} device
- * @param {GPUTexture | GPUBuffer} webgpuObject
- * @param {string} category
- * @property {number|ComputeMemSizeFn} size
  */
-function addDeviceMem(device, webgpuObject, category, size) {
+function addDeviceMem(
+  device: GPUDevice,
+  webgpuObject: WebGPUObject,
+  category: Category,
+  size: number | ComputeMemSizeFn) {
   addDeviceObject(device, webgpuObject, category, size);
 }
 
 /**
- * @param {number} deviceId
- * @returns true if device still exists
  */
-function deviceExists(deviceId) {
+function deviceExists(deviceId: number) {
   const ref = deviceIdToDeviceWeakRef.get(deviceId);
   return ref && !!ref.deref();
 }
 
 /**
  * Free an object's memory
- * @param {number} id
  */
-function freeObjectById(id, webgpuObject) {
+function freeObjectById(id: number, webgpuObject?: WebGPUObject) {
   const obj = allWebGPUObjectsById.get(id);
-  let size = obj?.size;
-  if (webgpuObject && typeof size === 'function') {
-    size = size(webgpuObject);
-  }
-  if (!isNaN(size)) {
-    const deviceInfo = allWebGPUObjectsById.get(obj.deviceId);
+  const sizer = obj?.size;
+  const size = (webgpuObject && typeof sizer === 'function')
+    ? sizer(webgpuObject)
+    : sizer as number;
+  if (!isNaN(size as any)) {
+    const deviceInfo = allWebGPUObjectsById.get(obj!.deviceId) as DeviceInfo;
     if (deviceInfo) {
       updateDeviceInfoRunningTotal(deviceInfo, -size);
     }
@@ -106,28 +129,31 @@ function freeObjectById(id, webgpuObject) {
 
 /**
  * Free the memory used by object.
- * @param {GPUTexture | GPUBuffer} webgpuObject
- * @param {string} category
  */
-function freeObject(webgpuObject) {
+function freeObject(webgpuObject: WebGPUObject) {
   const id = webgpuObject[webgpuMemoryIdSymbol];
   freeObjectById(id, webgpuObject);
 }
 
-/**
- * @typedef {Object} WebGPUMemoryInfo
- * @property {Object.<string, number>} memory
- * @property {Object.<string, number>} resources
- */
+type MemoryInfo = {
+  total: number,
+  buffer: number,
+  texture: number,
+  querySet: number,
+  canvas: number,
+  maxTotal: number,
+};
+
+type WebGPUMemoryInfo = {
+  memory: MemoryInfo,
+  resources: { [key: string]: number } 
+};
 
 /**
  * Gets WebGPU memory usage. If no device is passed in returns info for all devices.
- *
- * @param {GPUDevice} [device] optional device.
- * @returns {WebGPUMemoryInfo}
  */
-export function getWebGPUMemoryUsage(device) {
-  const memory = {
+export function getWebGPUMemoryUsage(device?: GPUDevice) {
+  const memory: MemoryInfo = {
     total: 0,
     buffer: 0,
     texture: 0,
@@ -135,7 +161,7 @@ export function getWebGPUMemoryUsage(device) {
     canvas: 0,
     maxTotal: 0,
   };
-  const resources = {
+  const resources: { [key: string]: number } = {
     buffer: 0,
     texture: 0,
     querySet: 0,
@@ -144,8 +170,9 @@ export function getWebGPUMemoryUsage(device) {
 
   const requestedDeviceId = device && device[webgpuMemoryIdSymbol];
 
-  const idsToDelete = [];
-  for (const [id, {ref, deviceId, category, size, maxTotal}] of allWebGPUObjectsById.entries()) {
+  const idsToDelete: number[] = [];
+  for (const [id, info] of allWebGPUObjectsById.entries()) {
+    const {ref, deviceId, category, size} = info;
     const webgpuObject = ref.deref();
     if (!webgpuObject || !deviceExists(deviceId)) {
       idsToDelete.push(id);
@@ -155,10 +182,10 @@ export function getWebGPUMemoryUsage(device) {
         if (size) {
           const numBytes = typeof size === 'function' ? size(webgpuObject) : size;
           memory.total += numBytes;
-          memory[category] += numBytes;
+          memory[category as unknown as keyof typeof memory] += numBytes;
         }
         if (category === 'device') {
-          memory.maxTotal += maxTotal;
+          memory.maxTotal += (info as DeviceInfo).maxTotal;
         }
       }
     }
@@ -173,14 +200,16 @@ export function getWebGPUMemoryUsage(device) {
   return info;
 }
 
-export function resetMaxTotal(device) {
-  const devices = device ? [device] : [];
+export function resetMaxTotal(device: GPUDevice) {
+  const devices: GPUDevice[] = device ? [device] : [];
   let newGlobalMaxTotal = 0;
   if (!device) {
     for (const [id, {ref, category}] of allWebGPUObjectsById.entries()) {
       if (category === 'device') {
         const webgpuObject = ref.deref();
-        devices.push(webgpuObject);
+        if (webgpuObject) {
+          devices.push(webgpuObject as GPUDevice);
+        }
       }
     }
   }
@@ -188,7 +217,7 @@ export function resetMaxTotal(device) {
   for (const device of devices) {
     const info = getWebGPUMemoryUsage(device);
     const deviceId = device[webgpuMemoryIdSymbol];
-    const deviceInfo = allWebGPUObjectsById.get(deviceId);
+    const deviceInfo = allWebGPUObjectsById.get(deviceId) as DeviceInfo;
     if (deviceInfo) {
       const { total } = info.memory;
       deviceInfo.maxTotal = total;
@@ -202,12 +231,16 @@ export function resetMaxTotal(device) {
   }
 }
 
-/**
- *
- * @param {GPUTexture} texture
- * @returns {number} approximate number of bytes used by texture.
- */
-function computeTextureMemorySize(texture) {
+
+function computeTextureMemorySize(texture: {
+  format: GPUTextureFormat,
+  dimension: GPUTextureDimension,
+  width: number,
+  height: number,
+  depthOrArrayLayers: number,
+  mipLevelCount: number,
+  sampleCount: number,
+}) {
   const {
     blockWidth,
     blockHeight,
@@ -233,83 +266,40 @@ function computeTextureMemorySize(texture) {
   return size;
 }
 
-/**
- * @param {object} object with method to wrap
- * @param {string} name Name of method to wrap
- * @param {} fn
- */
-function wrapFunction(object, name, fn) {
-  const origFn = object.prototype[name];
-  object.prototype[name] = function(...args) {
-    const result = origFn.call(this, ...args);
-    if (result !== undefined && typeof result.then === 'function') {
-      result.then(realResult => fn(this, realResult, ...args));
-    } else {
-      fn(this, result, ...args);
-    }
-    return result;
-  };
-}
-
-/**
- *
- * @param {GPUDevice} device
- * @param {GPUBuffer} buffer
- */
-function addBuffer(device, buffer) {
+function addBuffer(device: GPUDevice, buffer: GPUBuffer) {
   const bytesUsed = buffer.size;
   addDeviceMem(device, buffer, 'buffer', bytesUsed);
 }
 
-/**
- *
- * @param {GPUBuffer} buffer
- */
-function removeBuffer(buffer) {
+function removeBuffer(buffer: GPUBuffer) {
   freeObject(buffer);
 }
 
-/**
- *
- * @param {GPUDevice} device
- * @param {GPUTexture} texture
- */
-function addTexture(device, texture) {
+function addTexture(device: GPUDevice, texture: GPUTexture) {
   const bytesUsed = computeTextureMemorySize(texture);
   addDeviceMem(device, texture, 'texture', bytesUsed);
 }
 
-/**
- *
- * @param {GPUTexture} texture
- */
-function removeTexture(texture) {
+function removeTexture(texture: GPUTexture) {
   freeObject(texture);
 }
 
-/**
- * @param {GPUDevice} device
- * @param {GPUQuerySet} querySet
- */
-function addQuerySet(device, querySet) {
+function addQuerySet(device: GPUDevice, querySet: GPUQuerySet) {
   const bytesUsed = querySet.count * 8;
   addDeviceMem(device, querySet, 'querySet', bytesUsed);
 }
 
-/**
- * @param {GPUQuerySet} querySet
- */
-function removeQuerySet(querySet) {
+function removeQuerySet(querySet: GPUQuerySet) {
   freeObject(querySet);
 }
 
-function addDevice(adapter, device) {
+function addDevice(adapter: GPUAdapter, device: GPUDevice) {
   addDeviceMem(device, device, 'device', 0);
   const id = device[webgpuMemoryIdSymbol];
   deviceIdToDeviceWeakRef.set(id, new WeakRef(device));
 }
 
-function removeDevice(device) {
+function removeDevice(device: GPUDevice) {
   const id = device[webgpuMemoryIdSymbol];
   deviceIdToDeviceWeakRef.delete(id);
   freeObject(device);
@@ -319,7 +309,7 @@ function removeDevice(device) {
 // The one being displayed and the one being rendered to
 const kTexturesPerCanvas = 2;
 
-function computeCanvasBytesUsed(context, format) {
+function computeCanvasBytesUsed(context: GPUCanvasContext, format: GPUTextureFormat) {
   const {width, height} = context.canvas;
   return computeTextureMemorySize({
     format,
@@ -332,56 +322,95 @@ function computeCanvasBytesUsed(context, format) {
   }) * kTexturesPerCanvas;
 }
 
-function addContext(context, dummy, config) {
+function addContext(context: GPUCanvasContext, dummy: any, config: GPUCanvasConfiguration) {
   freeObject(context);
   const format = config.format;
   addDeviceMem(config.device, context, 'canvas', (context) => computeCanvasBytesUsed(context, format))
 }
 
-function removeContext(context) {
+function removeContext(context: GPUCanvasContext) {
   freeObject(context);
 }
 
-function resizeContext(context) {
+function resizeContext(context: GPUCanvasContext) {
   const id = context[webgpuMemoryIdSymbol];
-  const info = allWebGPUObjectsById.get(id);
-  const deviceInfo = allWebGPUObjectsById.get(info.deviceId);
+  const info = allWebGPUObjectsById.get(id) as CanvasInfo;
+  const deviceInfo = allWebGPUObjectsById.get(info.deviceId) as DeviceInfo;
   updateDeviceInfoRunningTotal(deviceInfo, -info.oldSize);
-  const size = info.size(context);
+  const size = (info.size as ComputeMemSizeFn)(context);
   info.oldSize = size;
   updateDeviceInfoRunningTotal(deviceInfo, size);
 }
 
-function wrapCreationDestroy(factoryClass, objectClass, fnName, category) {
-  wrapFunction(factoryClass, fnName, function(device, object) {
-    addDeviceObject(device, object, category);
+/**
+ * Adds a wrapper function to a class method that gets called after the actual function
+ */
+//function wrapFunction(object, name: string, fn) {
+//  const origFn = object.prototype[name];
+//  object.prototype[name] = function(...args) {
+//    const result = origFn.call(this, ...args);
+//    if (result !== undefined && typeof result.then === 'function') {
+//      result.then(realResult => fn(this, realResult, ...args));
+//    } else {
+//      fn(this, result, ...args);
+//    }
+//    return result;
+//  };
+//}
+
+function wrapFunction<K extends PropertyKey, T extends Record<K,(...args: Parameters<T[K]>) => any>>(
+    API: { prototype: T },
+    fnName: K,
+    fn: (t: T, obj: ReturnType<T[K]>, ...args: Parameters<T[K]>) => void) {
+  const origFn = API.prototype[fnName];
+  API.prototype[fnName] = function (this: T, ...args: Parameters<T[K]>) {
+    const result = origFn.call(this, ...args);
+    fn(this, result, ...args);
+    return result;
+  } as any;
+}
+
+function wrapAsyncFunction<K extends PropertyKey, T extends Record<K,(...args: Parameters<T[K]>) => any>>(
+    API: { prototype: T },
+    fnName: K,
+    fn: (t: T, obj: Awaited<ReturnType<T[K]>>, ...args: Parameters<T[K]>) => void) {
+  const origFn = API.prototype[fnName];
+  API.prototype[fnName] = async function (this: T, ...args: Parameters<T[K]>) {
+    const result = await origFn.call(this, ...args);
+    fn(this, result, ...args);
+    return result;
+  } as any;
+}
+
+declare global {
+  interface GPUDevice {
+    createSampler(descriptor?: any): GPUSampler;
+    createBindGroup(descriptor: any): GPUBindGroup;
+    createBindGroupLayout(descriptor: any): GPUBindGroupLayout;
+    createPipelineLayout(descriptor: any): GPUPipelineLayout;
+    createShaderModule(descriptor: any): GPUShaderModule;
+    createComputePipeline(descriptor: any): GPUComputePipeline;
+    createRenderPipeline(descriptor: any): GPURenderPipeline;
+    createComputePipelineAsync(descriptor: any): Promise<GPUComputePipeline>;
+    createRenderPipelineAsync(descriptor: any): Promise<GPURenderPipeline>;
+    prototype: GPUDevice; // Prototype should be the instance type for 'this' context    
+  }
+}
+
+function wrapCreationDestroy(factoryClass: any, objectClass: any, fnName: string, category: Category) {
+  // @ts-ignore
+  wrapFunction(factoryClass, fnName, function (device: GPUDevice, object: WebGPUObject) {
+    addDeviceObject(device, object, category, 0);
   });
   if (objectClass.prototype.destroy) {
-    wrapFunction(objectClass, 'destroy', function(object) {
+    wrapFunction(objectClass, 'destroy', function(object: WebGPUObject) {
       freeObject(object);
     });
   }
 }
-/* TODO: remove these! */
-/* global GPUAdapter */
-/* global GPUBuffer */
-/* global GPUDevice */
-/* global GPUTexture */
-/* global GPUSampler */
-/* global GPUBindGroup */
-/* global GPUBindGroupLayout */
-/* global GPUPipelineLayout */
-/* global GPUShaderModule */
-/* global GPUComputePipeline */
-/* global GPURenderPipeline */
-/* global GPUComputePipeline */
-/* global GPURenderPipeline */
-///* global GPUCommandEncoder */
-///* global GPURenderBundleEncoder */
-/* global GPUQuerySet */
 
 if (typeof GPUAdapter !== 'undefined') {
-  wrapFunction(GPUAdapter, 'requestDevice', addDevice);
+  wrapAsyncFunction(GPUAdapter, 'requestDevice', addDevice);
   wrapFunction(GPUDevice, 'destroy', removeDevice);
 
   wrapFunction(GPUCanvasContext, 'configure', addContext);

@@ -1,6 +1,6 @@
 import {assertEqual} from '../assert.js';
 import {describe, it} from '../mocha-support.js';
-import {getWebGPUMemoryUsage, resetMaxTotal} from '../../src/webgpu-memory.js';
+import {getWebGPUMemoryUsage, resetMaxTotal} from '../../dist/1.x/webgpu-memory.module.js';
 
 describe('buffer tests', () => {
 
