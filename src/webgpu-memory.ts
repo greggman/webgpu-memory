@@ -200,7 +200,7 @@ export function getWebGPUMemoryUsage(device?: GPUDevice) {
   return info;
 }
 
-export function resetMaxTotal(device: GPUDevice) {
+export function resetMaxTotal(device?: GPUDevice) {
   const devices: GPUDevice[] = device ? [device] : [];
   let newGlobalMaxTotal = 0;
   if (!device) {
