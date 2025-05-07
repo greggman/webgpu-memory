@@ -20,7 +20,7 @@
     "WebGPU"
   ],
   "files": [
-    "src/**/*"
+    "dist/1.x/*"
   ],
   "author": "Gregg Tavares",
   "license": "MIT",
