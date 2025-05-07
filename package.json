@@ -7,6 +7,7 @@
   "types": "dist/1.x/webgpu-memory.d.ts",
   "scripts": {
     "build": "rollup -c",
+    "build-ci": "npm run build && node build/tools/prep-for-deploy.js",
     "start": "node build/tools/serve.js",
     "test": "node test/puppeteer.js",
     "server": "servez",
