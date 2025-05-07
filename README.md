@@ -154,28 +154,18 @@ console.log(JSON.stringify(getWebGPUMemoryUsage(), null, 2));
 ```bash
 git clone https://github.com/greggman/webgpu-memory.git
 cd webgpu-memory
-npm install
+npm ci
+npm start
 ```
 
-now serve the folder
-
-```
-npx servez
-```
-
-and go to [`http://localhost:8080/test?src=true`](http://localhost:8080/test?src=true)
-
-`src=true` tells the test harness to use the unrolled source from the `src` folder
-where as without it uses `webgpu-memory.js` in the root folder which is built using
-`npm run build`.
+and go to [`http://localhost:8080/test`](http://localhost:8080/test)
 
 `grep=<some expression>` will limit the tests as in `...?src=true&grep=texture` only
 runs the tests with `texture` in their description.
 
 ## Live Tests
 
-[built version](https://greggman.github.io/webgpu-memory/test/)  
-[source version](https://greggman.github.io/webgpu-memory/test/?src=true)
+[tests](https://greggman.github.io/webgpu-memory/test/)  
 
 ## Licence
 
